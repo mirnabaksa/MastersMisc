@@ -14,14 +14,16 @@ from SignalDataset import Signal, SignalDataset
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def collate(in_batch):
+def collate(input):
+    in_batch, labels = map(list, zip(*input))
+   
     padded = pad_sequence(in_batch, batch_first = True, padding_value = 0)
     lens = [len(x) for x in in_batch]
     out = pack_padded_sequence(padded, lens, batch_first = True, enforce_sorted = False)
-    return out, padded.squeeze()
+    return out, padded.squeeze(), labels
   
 
-def train(dataset, iterations, hidden_size = 64, batch_size = 10, learning_rate = 0.01):
+def train(dataset, iterations = 10, hidden_size = 5, batch_size = 5):
     dataloader = DataLoader(dataset, batch_size = batch_size, collate_fn = collate)
     encoder = Encoder(1, hidden_size).to(device)
     decoder = Decoder(hidden_size, 1).to(device)
@@ -31,11 +33,11 @@ def train(dataset, iterations, hidden_size = 64, batch_size = 10, learning_rate 
     criterion = nn.MSELoss()
     iters_per_epoch = len(dataset)/batch_size
 
-    for iter in range(100):
+    for iter in range(iterations):
         loss_acc = 0
         last_hidden = None
-        #for y in dataset:
-        for input, target in dataloader:  
+        
+        for input, target, _ in dataloader:  
             encoder_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
 
@@ -45,16 +47,13 @@ def train(dataset, iterations, hidden_size = 64, batch_size = 10, learning_rate 
             
             loss = criterion(decoder_outputs, target)
             loss_acc += loss
-            if iter%10 == 0:
-                print("iter", iter, loss)
-                print(target, "\n", decoder_outputs)
       
             loss.backward(retain_graph = True)
             encoder_optimizer.step()
             decoder_optimizer.step()
         
-        if iter%10 == 0:
-            print("Loss acc", loss_acc/iters_per_epoch)
+        if iter%100 == 0:
+            print("Iter :", iter, " Loss: ", loss_acc/iters_per_epoch)
         loss_acc = 0
 
     torch.save(encoder, "encoder.pt")
@@ -74,14 +73,54 @@ def evaluate(dataloader):
     decoder.eval()
 
     y = None
-    for batch, target in dataloader:
+    for batch, target, _ in dataloader:
         y = batch
     decode(y, target, encoder, decoder)
+
+from sklearn.neighbors import KNeighborsClassifier
+def knn(encoder, dataloader, k = 3):
+    X = []
+    y = []
+    for input, _, label in dataloader:
+        encoder_outputs, encoder_hidden = encoder(input, None)
+        vector = encoder_hidden.squeeze().tolist()
+        if dataloader.batch_size == 1:
+            vector = [vector]
+        
+        X.extend(vector)
+        y.extend(label) 
+
+    neigh = KNeighborsClassifier(n_neighbors= k)
+    neigh.fit(X, y)
+    return neigh
+
+def predict(predictor, encoder, dataloader):
+    correct = 0
+    for X_test in dataloader:
+        X = X_test[0]
+        target = X_test[1]
+        labels = X_test[2]
+ 
+        encoder_outputs, encoder_hidden = encoder(X, None)
+
+        X = encoder_hidden.squeeze().tolist()
+        if dataloader.batch_size == 1:
+            X = [X]
+        pred = predictor.predict(X)
+        correct += sum(pred == labels)
+    
+    n = len(dataloader) * dataloader.batch_size
+    print("Accuracy: ", correct / n)
 
 
 if __name__ == '__main__':
     # constructDatasetCSV("../data_ecoli/reads/ecoli/")
     dataset = SignalDataset("../data_ecoli/reads/ecoli/", "test.csv")
-    dataloader = DataLoader(dataset, batch_size = 1, shuffle = True, collate_fn = collate)
-    #train(dataset, 5)
-    evaluate(dataloader)
+    dataloader = DataLoader(dataset, batch_size = 1, shuffle = False, collate_fn = collate)
+    #train(dataset)
+    #evaluate(dataloader)
+    
+    encoder = torch.load("encoder.pt")
+    predictor = knn(encoder, dataloader)
+    predict(predictor, encoder, dataloader)
+    
