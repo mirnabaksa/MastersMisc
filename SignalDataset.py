@@ -14,7 +14,7 @@ class SignalDataset(Dataset):
         self.n = sum([len(files) for r, d, files in os.walk(self.root_dir)])
 
     def __len__(self):
-        return 30#self.n
+        return 100#self.n
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -25,7 +25,7 @@ class SignalDataset(Dataset):
         return torch.FloatTensor([[i] for i in signal.get_raw()]) if self.raw else torch.FloatTensor(signal.get_pA())
 
 
-from random import uniform
+from random import uniform, randint
 class Signal():
     def __init__(self, filename):
         f = h5py.File(filename, 'r')
@@ -38,9 +38,9 @@ class Signal():
         self.scale = range/quantisation
     
     def get_raw(self):
-        x = uniform(0,1)
-        return [x, 1-x]
-        #return self.raw[:3]
+        #return self.raw[:5]
+        x = [uniform(0,1), uniform(0,1), uniform(0,1), uniform(0,1), uniform(0,1)]
+        return x[:randint(2,5)]
 
     def get_pA(self):
         return [self.scale * (raw + self.offset) for raw in self.raw]

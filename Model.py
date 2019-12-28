@@ -8,7 +8,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.hidden_size = hidden_size
         self.n_layers = n_layers
-        self.RNN = nn.GRU(input_size, hidden_size,  batch_first = False)
+        self.RNN = nn.GRU(input_size, hidden_size,  batch_first = True)
 
     def forward(self, input, hidden = None):
         outputs, hidden = self.RNN(input, hidden)
@@ -20,9 +20,10 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.hidden_size = hidden_size
         self.n_layers = n_layers
-        self.RNN = nn.GRU(hidden_size, output_size, batch_first = False)
+        self.RNN = nn.GRU(hidden_size, output_size, batch_first = True)
 
     def forward(self, input, hidden = None):
         output,  hidden = self.RNN(input, hidden)
-        #output = self.out(output)
-        return torch.squeeze(output)
+        output = pad_packed_sequence(output, batch_first = True)
+        output = output[0].squeeze()
+        return output
