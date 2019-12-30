@@ -3,9 +3,10 @@ import math
 from os import listdir
 from os.path import isfile, join
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-plt.switch_backend('agg')
-import matplotlib.ticker as ticker
+
 
 def timeNow():
     return time.time()
@@ -24,14 +25,34 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def showPlot(points):
-    plt.figure()
-    fig, ax = plt.subplots()
-    loc = ticker.MultipleLocator(base=0.2)
-    ax.yaxis.set_major_locator(loc)
-    plt.plot(points)
+def showPlot(train, validation = None, filename = "loss.png"):
+    plt.plot(train)
+    plt.plot(validation)
 
-import numpy as np
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train','validation'], loc='upper left')
+
+    plt.savefig(filename)
+    plt.close()
+
+
+import csv
 def constructDatasetCSV(root_dir):
-    f = [join(root_dir,f) for f in listdir(root_dir) if isfile(join(root_dir, f))]
-    np.savetxt("test.csv", f, delimiter="\n", fmt='%s')
+    with open('dataset.csv', 'w') as dataset_file:
+        file_writer = csv.writer(dataset_file)
+        for sub_dir in listdir(root_dir):
+            label = sub_dir.replace("_reference_DeepSimu", "")
+        
+            count = 0
+            target_dir = join(root_dir, sub_dir, "fast5/")
+            for filename in listdir(target_dir):
+                count += 1
+                file_writer.writerow((join(target_dir, filename), label))
+                if count == 100:
+                    break
+
+            
+   # f = [join(root_dir,f) for f in listdir(root_dir) if isfile(join(root_dir, f))]
+    #np.savetxt("test.csv", f, delimiter="\n", fmt='%s')

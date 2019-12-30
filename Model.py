@@ -26,4 +26,4 @@ class Decoder(nn.Module):
         output,  hidden = self.RNN(input, hidden)
         output = pad_packed_sequence(output, batch_first = True)
         output = output[0].squeeze()
-        return output
+        return output, hidden
