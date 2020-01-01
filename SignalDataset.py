@@ -9,47 +9,142 @@ import numpy as np
 import random
 from random import uniform, randint, choice
 
-
 from sklearn.preprocessing import minmax_scale
+
+class TripletTestDataset(Dataset):
+    def __init__(self):
+        n_classes = 3
+        n_points = 50
+
+        self.positive = []
+        self.negative = []
+        for i in range(n_points):
+            test_sample = []
+            x = uniform(-0.5,0.5)
+            #x_len = 4
+            x_len = randint(4, 7)
+            #self.data.append(([min(max(x+0.1*i, -1),1) for i in range(x_len)], 1))
+            self.positive.append(([min(max(x+0.1*i, -1),1)for i in range(x_len)], "positive"))
+
+        for i in range(n_points):
+            test_sample = []
+            x = uniform(-0.5,0.5)
+            #x_len = 4
+            x_len = randint(4, 7)
+            #self.data.append(([min(max(x-0.2*i, -1), 1) for i in range(x_len)], 2))
+            self.negative.append(([min(max(x-0.1*i, -1),1)for i in range(x_len)], "negative"))
+
+        self.neutral = []
+        for i in range(n_points):
+            test_sample = []
+            x = uniform(-0.5,0.5)
+            #x_len = 4
+            x_len = randint(4, 7)
+            #self.data.append(([min(max(x-0.2*i, -1), 1) for i in range(x_len)], 2))
+            self.neutral.append(([min(max(2*x+0.05*i, -1),1)for i in range(x_len)], "neutral"))
+
+
+        self.triplets = []
+        for i in range(n_points//2):
+            a = self.positive[randint(0,49)]
+            p = self.positive[randint(0,49)]
+            n = self.negative[randint(0,49)]
+            self.triplets.append((a,p,n, 1))
+
+        for i in range(n_points//2):
+            a = self.positive[randint(0,49)]
+            p = self.positive[randint(0,49)]
+            n = self.neutral[randint(0,49)]
+            self.triplets.append((a,p,n, 1))
+
+        for i in range(n_points//2):
+            a = self.negative[randint(0,49)]
+            p = self.negative[randint(0,49)]
+            n = self.positive[randint(0,49)]
+            self.triplets.append((a,p,n, 0))
+
+        for i in range(n_points//2):
+            a = self.negative[randint(0,49)]
+            p = self.negative[randint(0,49)]
+            n = self.neutral[randint(0,49)]
+            self.triplets.append((a,p,n, 0))
+
+        for i in range(n_points//2):
+            a = self.neutral[randint(0,49)]
+            p = self.neutral[randint(0,49)]
+            n = self.negative[randint(0,49)]
+            self.triplets.append((a,p,n, 2))
+
+        for i in range(n_points//2):
+            a = self.neutral[randint(0,49)]
+            p = self.neutral[randint(0,49)]
+            n = self.positive[randint(0,49)]
+            self.triplets.append((a,p,n, 2))
+
+        ''' 
+        np.set_printoptions(precision=5)      
+        print(np.array(self.data[1][0]))
+        print(np.array(self.data[151][0]))
+        print(np.array(self.data[201][0]))
+        print(np.array(self.data[354][0]))
+        '''
+
+        self.n = n_points * 3
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, idx):
+        a, p, n, l = self.triplets[idx]
+        return torch.FloatTensor([[i] for i in a[0]]), torch.FloatTensor([[i] for i in p[0]]), torch.FloatTensor([[i] for i in n[0]]), l
+
+    def get_distinct_labels(self):
+        return [0,1,2]
+        
 
 class TestDataset(Dataset):
 
     def __init__(self):
         n_classes = 4
-        n_points = 100
+        n_points = 50
 
         self.data = []
         for i in range(n_points):
             test_sample = []
             x = uniform(-0.5,0.5)
             x_len = randint(4, 7)
-            self.data.append(([min(max(x+0.1*i, -1),1) for i in range(x_len)], 1))
+            #self.data.append(([min(max(x+0.1*i, -1),1) for i in range(x_len)], 1))
+            self.data.append(([0.2 for i in range(x_len)], 1))
 
         for i in range(n_points):
             test_sample = []
             x = uniform(-0.5,0.5)
             x_len = randint(4, 7)
-            self.data.append(([min(max(x-0.2*i, -1), 1) for i in range(x_len)], 2))
+            #self.data.append(([min(max(x-0.2*i, -1), 1) for i in range(x_len)], 2))
+            self.data.append(([0.7 for i in range(x_len)], 2))
     
      
         for i in range(n_points):
             test_sample = []
             x = uniform(-0.5,0.5)
             x_len = randint(4, 7)
-            self.data.append(([min(max(2*x - 0.5*i, -1), 1) for i in range(x_len)], 3))
+            #self.data.append(([min(max(2*x - 0.5*i, -1), 1) for i in range(x_len)], 3))
+            self.data.append(([-0.3 for i in range(x_len)], 3))
 
         for i in range(n_points):
             test_sample = []
             x = uniform(-0.5,0.5)
             x_len = randint(4, 7)
-            self.data.append(([min(max(-x + 0.1*i, -1), 1) for i in range(x_len)], 4))
+            #self.data.append(([min(max(-x + 0.1*i, -1), 1) for i in range(x_len)], 4))
+            self.data.append(([-0.5 for i in range(x_len)], 4))
 
+        ''' 
         np.set_printoptions(precision=5)      
         print(np.array(self.data[1][0]))
         print(np.array(self.data[151][0]))
         print(np.array(self.data[201][0]))
         print(np.array(self.data[354][0]))
-        
+        '''
 
         self.n = n_classes * n_points
 
@@ -61,6 +156,33 @@ class TestDataset(Dataset):
         #data = minmax_scale(data)
         return torch.FloatTensor([[i] for i in data]), label
 
+    def get_distinct_labels(self):
+        return [1,2,3,4]
+
+class SignalTripletDataset(Dataset):
+
+    def __init__(self, root_dir, reference_csv, raw = True):
+        self.root_dir = root_dir
+        self.reference = pd.read_csv(reference_csv, delimiter = ",", header = None)
+        self.raw = raw
+        self.n = len(self.reference)
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        
+        anchor, positive, negative, label = self.reference.iloc[idx]
+        a, p, n = Signal(anchor), Signal(positive), Signal(negative)
+        data_a = a.get_raw() if self.raw else a.get_pA()
+        data_p = p.get_raw() if self.raw else p.get_pA()
+        data_n = n.get_raw() if self.raw else n.get_pA()
+        return torch.FloatTensor([[i] for i in data_a]), torch.FloatTensor([[i] for i in data_p]), torch.FloatTensor([[i] for i in data_n]), label
+
+    def get_distinct_labels(self):
+        return ["bacillus_anthracis", "ecoli", "klebsiella_pneumoniae", "pantonea_agglomerans", "pseudomonas_koreensis", "yersinia_pestis"]
 
 class SignalDataset(Dataset):
 
@@ -82,6 +204,9 @@ class SignalDataset(Dataset):
         data = signal.get_raw() if self.raw else signal.get_pA()
         return torch.FloatTensor([[i] for i in data]), label
 
+    def get_distinct_labels(self):
+        return ["bacillus_anthracis", "ecoli", "klebsiella_pneumoniae", "pantonea_agglomerans", "pseudomonas_koreensis", "yersinia_pestis"]
+
 
 class Signal():
     def __init__(self, filename):
@@ -95,7 +220,7 @@ class Signal():
         self.scale = range/quantisation
     
     def get_raw(self):
-        return minmax_scale(self.raw[:150])
+        return minmax_scale(self.raw[:50])
         '''
         y = uniform(-1,1)
         flag = choice([0, 1])
@@ -105,4 +230,4 @@ class Signal():
         '''
 
     def get_pA(self):
-        return minmax_scale([self.scale * (raw + self.offset) for raw in self.raw[:1500]])
+        return minmax_scale([self.scale * (raw + self.offset) for raw in self.raw[:50]])
