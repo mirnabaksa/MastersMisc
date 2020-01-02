@@ -53,14 +53,14 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
         
         train_losses.append(loss_acc/len(train))
 
-        '''
+        
         with torch.no_grad():
             val_loss_acc = 0
             for input, target, _ in validation:
                 input = input.to(device)
                 target = target.to(device)
             
-                encoder.eval()
+                model.eval()
                 decoder.eval()
 
                 encoder_outputs, enc_last_hidden = encoder(input, enc_last_hidden)
@@ -69,16 +69,16 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
                 val_loss = criterion(decoder_outputs, target)
                 val_loss_acc += val_loss.item()
             validation_losses.append(val_loss_acc)
-        '''
+        
 
         if iter%1 == 0:
             print("Iteration:", iter, 
             " Train loss: ", "{0:.5f}".format(loss_acc/len(train)), 
-           # " Validation loss: ", "{0:.5f}".format(validation_losses[-1])
+            " Validation loss: ", "{0:.5f}".format(validation_losses[-1])
             )
         loss_acc = 0
         
-    showPlot(train_losses)
+    showPlot(train_losses, validation_losses)
 
     torch.save(model, "model.pt")
 

@@ -110,10 +110,13 @@ def visualize(X, y, distinct_labels):
 def scatter(x, labels, distinct_labels, subtitle=None):
     print("Scattering...")
     palette = np.array(sns.color_palette("hls", 10))
-
+    colors = []
+    for label in labels:
+        colors.append(palette[distinct_labels.index(label)])
+    print(colors[:5])
     f = plt.figure(figsize=(8, 8))
     ax = plt.subplot(aspect='equal')
-    sc = ax.scatter(x[:,0], x[:,1], lw=0, s=40, c=palette[labels.astype(np.int)])
+    sc = ax.scatter(x[:,0], x[:,1], lw=0, s=40, c=colors)
     plt.xlim(-10, 10)
     plt.ylim(-10, 10)
     ax.axis('off')

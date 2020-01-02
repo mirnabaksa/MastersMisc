@@ -5,9 +5,9 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 
 from Model import TripletEncoder
-from SignalDataset import SignalTripletDataset
+from SignalDataset import SignalTripletDataset, TripletTestDataset
 
-from util import knn, visualize, constructTripletDatasetCSV
+from util import knn, visualize, constructTripletDatasetCSV, showPlot
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -35,9 +35,10 @@ def triplet_loss(a, p, n, margin=0.2) :
     return loss
 
 
-def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size = 64, batch_size = 64):
+def train(train_dataset, validation_dataset = None, iterations = 100, hidden_size = 64, batch_size = 32):
     print("Training...")
     train = DataLoader(train_dataset, batch_size = batch_size, shuffle = True, collate_fn = collate)
+
     if validation_dataset:
         validation = DataLoader(validation_dataset, batch_size = batch_size, shuffle = True, collate_fn = collate)
 
@@ -46,6 +47,7 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
     criterion = triplet_loss
 
     train_losses = []
+    validation_losses = []
 
     for iter in range(iterations):
         loss_acc = 0
@@ -65,13 +67,29 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
         
         train_losses.append(loss_acc/len(train))
 
+        
+        with torch.no_grad():
+            val_loss_acc = 0
+            for a,p,n,l in validation:
+                input = a.to(device)
+            
+                encoder.eval()
+                a,p,n = encoder(a,p,n)
+
+                val_loss = criterion(a,p,n)
+                val_loss_acc += val_loss.item()
+            validation_losses.append(val_loss_acc)
 
         if iter%1 == 0:
             print("Iteration:", iter, 
-            " Train loss: ", "{0:.5f}".format(loss_acc/len(train))
+            " Train loss: ", "{0:.5f}".format(loss_acc/len(train)), 
+            " Validation loss: ", "{0:.5f}".format(validation_losses[-1])
             )
         loss_acc = 0
         
+    
+    showPlot(train_losses, validation_losses)
+
     torch.save(encoder, "triplet_encoder.pt")
 
 def evaluate(test_dataloader):
@@ -79,7 +97,7 @@ def evaluate(test_dataloader):
     for a,p,n,l in test_dataloader:
         output = model.get_latent(a)
         print("Target")
-        print(a.squeeze())
+        print()
         print("Model out")
         print(output.squeeze())
         print()
@@ -113,29 +131,36 @@ def predict(predictor, model, dataloader):
         if dataloader.batch_size == 1:
             X = [X]
         pred = predictor.predict(X)
-        correct += sum(pred == labels.item())
+        print("predicted", pred)
+        print("label", labels)
+        
+        for i in range(len(pred)):
+            if pred[i] == labels[i]:
+                correct += 1
+        #scorrect += sum(pred == labels.item())
     
     n = len(dataloader) * dataloader.batch_size
+    print(correct)
     print("Accuracy: ", correct / n)
 
 if __name__ == '__main__':
     #constructTripletDatasetCSV("../Signals/full_dataset/")
-    
-    dataset = SignalTripletDataset("../Signals/full_dataset/", "dataset_triplet.csv", raw = True)
+    dataset = TripletTestDataset()
+    #dataset = SignalTripletDataset("../Signals/full_dataset/", "dataset_triplet.csv", raw = True)
     train_size = int(0.8 * len(dataset))
-    val_test_size = len(dataset) - train_size
+    val_test_size = (len(dataset) - train_size) // 2
+    train_dataset, validation_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size,  val_test_size, val_test_size]) 
 
-    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_test_size])  
-    train(train_dataset)
+   # train(train_dataset, validation_dataset)
 
     dataloader = DataLoader(train_dataset, batch_size = 1, shuffle = True, collate_fn = collate)
     model = torch.load("triplet_encoder.pt")
 
     X, y = get_latent(dataloader, model)
-    predictor = knn(X, y, 3)
-    visualize(X, y, dataset.get_distinct_labels())
+    predictor = knn(X, y, 5)
 
     test_dataloader = DataLoader(test_dataset, batch_size = 1, shuffle = True, collate_fn = collate)
-    #evaluate(test_dataloader)
+    evaluate(test_dataloader)
     predict(predictor, model, test_dataloader)
     
+    visualize(X, y, dataset.get_distinct_labels())
