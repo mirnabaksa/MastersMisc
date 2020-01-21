@@ -33,7 +33,7 @@ def timeSince(since, percent):
     return '%s (- %s)' % (asMinutes(s), asMinutes(rs))
 
 
-def showPlot(train, validation = None, filename = "loss.png"):
+def showPlot(train, validation = None, filename = "figures/loss.png"):
     plt.plot(train)
     if validation:
         plt.plot(validation)
@@ -49,7 +49,7 @@ def showPlot(train, validation = None, filename = "loss.png"):
 
 import csv
 def constructDatasetCSV(root_dir):
-    with open('dataset.csv', 'w') as dataset_file:
+    with open('csv/dataset.csv', 'w') as dataset_file:
         file_writer = csv.writer(dataset_file)
         for sub_dir in listdir(root_dir):
             label = sub_dir.replace("_reference_DeepSimu", "")
@@ -65,7 +65,7 @@ def constructDatasetCSV(root_dir):
 import random       
 import collections
 def constructTripletDatasetCSV(root_dir):
-    with open('dataset_triplet.csv', 'w') as dataset_file:
+    with open('csv/dataset_triplet.csv', 'w') as dataset_file:
         file_writer = csv.writer(dataset_file)
 
         data = collections.defaultdict(list)
@@ -113,7 +113,7 @@ def scatter(x, labels, distinct_labels, subtitle=None):
     colors = []
     for label in labels:
         colors.append(palette[distinct_labels.index(label)])
-    print(colors[:5])
+
     f = plt.figure(figsize=(8, 8))
     ax = plt.subplot(aspect='equal')
     sc = ax.scatter(x[:,0], x[:,1], lw=0, s=40, c=colors)
@@ -134,5 +134,5 @@ def scatter(x, labels, distinct_labels, subtitle=None):
     if subtitle != None:
         plt.suptitle(subtitle)
         
-    plt.savefig("tsne.png")
+    plt.savefig("figures/tsne.png")
 

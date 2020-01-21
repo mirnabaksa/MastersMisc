@@ -35,7 +35,7 @@ def triplet_loss(a, p, n, margin=0.2) :
     return loss
 
 
-def train(train_dataset, validation_dataset = None, iterations = 100, hidden_size = 64, batch_size = 32):
+def train(train_dataset, validation_dataset = None, iterations = 60, hidden_size = 128, batch_size = 32):
     print("Training...")
     train = DataLoader(train_dataset, batch_size = batch_size, shuffle = True, collate_fn = collate)
 
@@ -52,13 +52,13 @@ def train(train_dataset, validation_dataset = None, iterations = 100, hidden_siz
     for iter in range(iterations):
         loss_acc = 0
         enc_last_hidden = None
+        encoder.train()
         
         for in_a, in_p, in_n, l in train:  
-            optimizer.zero_grad()
-
-            a, p, n = encoder(in_a, in_p, in_n, None)
+            a, p, n = encoder(in_a.to(device), in_p.to(device), in_n.to(device), None)
             enc_last_hidden = a
             
+            optimizer.zero_grad()
             loss = criterion(a, p, n)
             loss_acc += loss.item()
       
@@ -90,10 +90,10 @@ def train(train_dataset, validation_dataset = None, iterations = 100, hidden_siz
     
     showPlot(train_losses, validation_losses)
 
-    torch.save(encoder, "triplet_encoder.pt")
+    torch.save(encoder, "models/triplet_encoder.pt")
 
 def evaluate(test_dataloader):
-    model = torch.load("model.pt")
+    model = torch.load("models/triplet_encoder.pt")
     for a,p,n,l in test_dataloader:
         output = model.get_latent(a)
         print("Target")
@@ -145,22 +145,23 @@ def predict(predictor, model, dataloader):
 
 if __name__ == '__main__':
     #constructTripletDatasetCSV("../Signals/full_dataset/")
+    
     dataset = TripletTestDataset()
-    #dataset = SignalTripletDataset("../Signals/full_dataset/", "dataset_triplet.csv", raw = True)
+    #dataset = SignalTripletDataset("../Signals/full_dataset/", "csv/dataset_triplet.csv", raw = True)
     train_size = int(0.8 * len(dataset))
     val_test_size = (len(dataset) - train_size) // 2
     train_dataset, validation_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size,  val_test_size, val_test_size]) 
 
-   # train(train_dataset, validation_dataset)
+    train(train_dataset, validation_dataset)
 
     dataloader = DataLoader(train_dataset, batch_size = 1, shuffle = True, collate_fn = collate)
-    model = torch.load("triplet_encoder.pt")
+    model = torch.load("models/triplet_encoder.pt")
 
     X, y = get_latent(dataloader, model)
     predictor = knn(X, y, 5)
 
     test_dataloader = DataLoader(test_dataset, batch_size = 1, shuffle = True, collate_fn = collate)
-    evaluate(test_dataloader)
+    #evaluate(test_dataloader)
     predict(predictor, model, test_dataloader)
     
     visualize(X, y, dataset.get_distinct_labels())

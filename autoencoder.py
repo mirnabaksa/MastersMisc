@@ -23,7 +23,7 @@ def collate(input):
     return out, padded.squeeze(), labels
   
 
-def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size = 32, batch_size = 16):
+def train(train_dataset, validation_dataset = None, iterations = 2, hidden_size = 5, batch_size = 16):
     print("Training...")
     train = DataLoader(train_dataset, batch_size = batch_size, collate_fn = collate, shuffle = True)
     validation = DataLoader(validation_dataset, batch_size = batch_size, collate_fn = collate, shuffle = True)
@@ -41,7 +41,8 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
         enc_last_hidden = None
         dec_last_hidden = None
         
-        for input, target, _ in train:  
+        for input, _, label in train:  
+            target = input
             optimizer.zero_grad()
             output = model(input)
             
@@ -57,16 +58,11 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
         with torch.no_grad():
             val_loss_acc = 0
             for input, target, _ in validation:
-                input = input.to(device)
-                target = target.to(device)
-            
                 model.eval()
-                decoder.eval()
 
-                encoder_outputs, enc_last_hidden = encoder(input, enc_last_hidden)
-                decoder_outputs, dec_last_hidden = decoder(encoder_outputs, dec_last_hidden)
+                output = model(input)
 
-                val_loss = criterion(decoder_outputs, target)
+                val_loss = criterion(output, target)
                 val_loss_acc += val_loss.item()
             validation_losses.append(val_loss_acc)
         
@@ -80,10 +76,10 @@ def train(train_dataset, validation_dataset = None, iterations = 10, hidden_size
         
     showPlot(train_losses, validation_losses)
 
-    torch.save(model, "model.pt")
+    torch.save(model, "models/model.pt")
 
 def evaluate(test_dataloader):
-    model = torch.load("model.pt")
+    model = torch.load("models/model.pt")
     for input, target, label in test_dataloader:
         output = model(input)
         print("Target")
@@ -99,6 +95,8 @@ def get_latent(dataloader, model):
     for input, _, label in dataloader:
         hidden = model.get_latent(input)
         vector = hidden.squeeze().tolist()
+        print(vector)
+        return
         if dataloader.batch_size == 1:
             vector = [vector]
         
@@ -130,16 +128,16 @@ def predict(predictor, model, dataloader):
 
 if __name__ == '__main__':
     #constructDatasetCSV("../Signals/full_dataset/")
-    #dataset = SignalDataset("../Signals/full_dataset/", "dataset.csv", raw = False)
+    #dataset = SignalDataset("../Signals/full_dataset/", "csv/dataset.csv", raw = False)
     dataset = TestDataset()
     train_size = int(0.8 * len(dataset))
     val_test_size = (len(dataset) - train_size) // 2
     train_dataset, validation_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size,  val_test_size, val_test_size])  
  
-    #train(train_dataset, validation_dataset)
+    train(train_dataset, validation_dataset)
     
     dataloader = DataLoader(train_dataset, batch_size = 1, shuffle = True, collate_fn = collate)
-    model = torch.load("model.pt")
+    model = torch.load("models/model.pt")
     X, y = get_latent(dataloader, model)
     predictor = knn(X, y, 3)
     visualize(X,y, dataset.get_distinct_labels())
